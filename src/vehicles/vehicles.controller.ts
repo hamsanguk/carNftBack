@@ -1,6 +1,7 @@
-import { Controller, Post, Body, Req } from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, Req, ParseIntPipe } from '@nestjs/common';
 import { VehiclesService } from './vehicles.service';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
+
 
 @Controller('nft')
 export class VehiclesController {
@@ -22,4 +23,11 @@ export class VehiclesController {
     // const vehicle = await this.vehiclesService.mintVehicle(createVehicleDto, ownerAddress);
     // return { message: 'Mint success', vehicle };
   }
+
+@Get(':tokenId')
+async getVehicle(@Param('tokenId', ParseIntPipe) tokenId: number) {
+  return this.vehiclesService.getVehicle(tokenId);
+  
+}
+
 }

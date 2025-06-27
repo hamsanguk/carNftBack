@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable,NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Vehicle } from './vehicle.entity';
@@ -32,7 +32,6 @@ export class VehiclesService {
   async mintVehicle(createVehicleDto: CreateVehicleDto, ownerAddress: string): Promise<Vehicle> {
     const { vin, manufacturer } = createVehicleDto;
 
-
     // 스마트컨트랙트 호출
     const tx = await this.contract.mintVehicle(vin, manufacturer);
     console.log('tx hash', tx.hash)
@@ -48,9 +47,7 @@ export class VehiclesService {
             event = parsedLog;
             break;
           }
-        } catch {
-          // 무시
-        }
+        } catch {}
       }
 
 if (!event) {
@@ -70,4 +67,35 @@ if (!event) {
     });
     return this.vehicleRepository.save(vehicle);
   }
+  // src/vehicles/vehicles.service.ts
+
+async getVehicle(tokenId: number) {
+    // 1) DB에서 캐시된 메타데이터 조회
+    const vehicle = await this.vehicleRepository.findOneBy({ tokenId });
+    if (!vehicle) {
+      throw new NotFoundException(`Vehicle ${tokenId} not found in DB`);
+    }
+  
+    // 2) on-chain으로 소유자 주소 조회
+    const ownerOnChain = await this.contract.ownerOf(tokenId);
+  
+    // 3) (선택) tokenURI 또는 추가 속성 가져오기
+    let tokenUri: string | null = null;
+    try {
+      tokenUri = await this.contract.tokenURI(tokenId);
+    } catch {
+      // tokenURI 구현 안 돼 있으면 무시
+    }
+  
+    return {
+      tokenId: vehicle.tokenId,
+      vin: vehicle.vin,
+      manufacturer: vehicle.manufacturer,
+      ownerDb: vehicle.owner,
+      ownerOnChain,
+      mintedAt: vehicle.mintedAt,
+      tokenUri,
+    };
+  }
+  
 }
