@@ -2,6 +2,9 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import {Vehicle} from './vehicles/vehicle.entity'
 import { VehiclesModule } from './vehicles/vehicles.module';
+import { PinataModule } from './pinata/pinata.module';
+import { ConfigModule } from '@nestjs/config';
+
 
 
 @Module({
@@ -18,6 +21,8 @@ import { VehiclesModule } from './vehicles/vehicles.module';
     }),
     TypeOrmModule.forFeature([Vehicle]),
     VehiclesModule,
+    ConfigModule.forRoot({isGlobal:true}),
+    PinataModule,
   ],
   controllers: [],
   providers: [],

@@ -8,7 +8,7 @@ async function bootstrap() {
   app.enableCors();
 
   app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
+    whitelist: false, // 원래는 true인데 에러찾느라 일시적으로 false
     forbidNonWhitelisted:true,
     transform:true,
   }));
