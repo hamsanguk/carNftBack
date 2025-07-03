@@ -20,7 +20,7 @@ export class VehicleEventListenerService implements OnModuleInit, OnModuleDestro
     this.provider = new ethers.WebSocketProvider(wsUrl);
     this.contract = new ethers.Contract(
       process.env.VEHICLE_NFT_ADDRESS!,
-      VehicleNFTabi.abi,
+      VehicleNFTabi,
       this.provider,
     );
   }

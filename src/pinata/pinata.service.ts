@@ -28,19 +28,7 @@ export class PinataService {
     }
   }
 
-  /**
-   * 메타데이터 JSON을 IPFS에 업로드하고 CID URL을 반환
-   */
-//   async uploadMetadata(metadata: Record<string, any>): Promise<string> {
-//     try {
-//       const result = await this.pinata.pinJSONToIPFS(metadata, {
-//         pinataMetadata: { name: metadata.name || 'metadata' }
-//       });
-//       return `ipfs://${result.IpfsHash}`;
-//     } catch (error) {
-//       throw new InternalServerErrorException('메타데이터 업로드 실패');
-//     }
-//   }
+ 
 async uploadMetadata(metadata: Record<string, any>): Promise<string> {
     console.log('▶︎ Pinata uploadMetadata 호출, metadata=', metadata);
     try {

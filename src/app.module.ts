@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import {Vehicle} from './vehicles/vehicle.entity'
+import { TradeHistory } from './trade-history/trade-history.entity';
 import { VehiclesModule } from './vehicles/vehicles.module';
 import { PinataModule } from './pinata/pinata.module';
 import { ConfigModule } from '@nestjs/config';
@@ -16,10 +17,10 @@ import { ConfigModule } from '@nestjs/config';
       username: 'hamsang-ug',
       password: '1q2w3e4r',
       database: 'vehicle_db',
-      entities: [Vehicle],
+      entities: [Vehicle, TradeHistory],
       synchronize: true,  // 개발 단계에서만 true, 운영 시 false로 변경
     }),
-    TypeOrmModule.forFeature([Vehicle]),
+    TypeOrmModule.forFeature([Vehicle, TradeHistory]),
     VehiclesModule,
     ConfigModule.forRoot({isGlobal:true}),
     PinataModule,
