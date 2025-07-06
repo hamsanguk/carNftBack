@@ -17,13 +17,14 @@ export class PinataService {
    * 이미지 파일을 IPFS에 업로드하고 CID URL을 반환
    */
   async uploadImage(file: Express.Multer.File): Promise<string> {
-    try {
+    try { 
       const stream = Readable.from(file.buffer);
       const result = await this.pinata.pinFileToIPFS(stream, {
         pinataMetadata: { name: file.originalname }
       });
       return `ipfs://${result.IpfsHash}`;
     } catch (error) {
+      console.log('pinata upload중 오류',error)
       throw new InternalServerErrorException('이미지 업로드 실패');
     }
   }

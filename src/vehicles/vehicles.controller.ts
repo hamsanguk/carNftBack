@@ -8,7 +8,7 @@ export class VehiclesController {
 
   @Post('mint')
   async mint(@Body() createVehicleDto: CreateVehicleDto, @Req() req: any) {
-    console.log('mint API 호출됨');
+    console.log('mint API 호출');
     const ownerAddress = req.headers['x-owner-address'] || '0x0000000000000000000000000000000000000000';
     try {
       const vehicle = await this.vehiclesService.mintVehicle(createVehicleDto, ownerAddress);
@@ -24,3 +24,4 @@ export class VehiclesController {
     return this.vehiclesService.getVehicle(tokenId);
   }
 }
+//db save fail: db tokenId 3, contract.totaltransfer 4

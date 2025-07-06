@@ -1,8 +1,8 @@
-import {Entity, Column, PrimaryGeneratedColumn} from 'typeorm';
+import {Entity, Column, PrimaryGeneratedColumn, PrimaryColumn} from 'typeorm';
 
 @Entity('vehicles')
 export class Vehicle{
-    @PrimaryGeneratedColumn({type: 'bigint'})
+    @PrimaryColumn({type: 'bigint'})
     tokenId:number;
 
     @Column({unique:true})
