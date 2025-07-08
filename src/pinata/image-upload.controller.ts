@@ -1,4 +1,4 @@
-import {Controller,Post,UploadedFile,UseInterceptors,BadRequestException}from "@nestjs/common";
+import {Controller,Post,UploadedFile,UseInterceptors,BadRequestException,Request}from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import {PinataService} from './pinata.service';
 

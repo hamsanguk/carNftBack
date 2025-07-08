@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import {Vehicle} from './vehicles/vehicle.entity'
 import { TradeHistory } from './trade-history/trade-history.entity';
+import { TradeModule } from './trade/trade.module';
 import { VehiclesModule } from './vehicles/vehicles.module';
 import { PinataModule } from './pinata/pinata.module';
 import { ConfigModule } from '@nestjs/config';
@@ -22,6 +23,7 @@ import { ConfigModule } from '@nestjs/config';
     }),
     TypeOrmModule.forFeature([Vehicle, TradeHistory]),
     VehiclesModule,
+    TradeModule,
     ConfigModule.forRoot({isGlobal:true}),
     PinataModule,
   ],

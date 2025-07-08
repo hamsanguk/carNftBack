@@ -2,6 +2,7 @@ import {
     Controller, Post, Body,
     UploadedFile, UseInterceptors, Req, BadRequestException
   } from '@nestjs/common';
+  import {Request} from 'express'
   import { FileInterceptor } from '@nestjs/platform-express';
   import { PinataService } from './pinata.service';
   import {

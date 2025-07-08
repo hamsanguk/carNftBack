@@ -18,6 +18,6 @@ export class TradeHistory {
   @Column()
   txHash: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({type:'timestamp'})
   tradedAt: Date;
 }
