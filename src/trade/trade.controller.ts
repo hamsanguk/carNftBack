@@ -14,6 +14,14 @@ import {
     async requestTrade(@Body() dto: CreateTradeRequestDto) {
       return this.tradeService.createTradeRequest(dto);
     }
+
+    @Get('request')
+    async getRequestByTokenAndRequester(
+      @Query('token_id') tokenId:string,
+      @Query('requester') requester:string
+    ){
+      return this.tradeService.getRequestByTokenAndRequester(tokenId,requester);
+    }
   
     @Get('requests')
     @UseGuards(RolesGuard)

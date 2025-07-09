@@ -78,6 +78,35 @@ export class VehiclesService {
     return vehicle;
   }
 
+  async getAllVehicles(){//리스트용
+    const vehicles = await this.vehicleRepository.find();//db에서 vehicle가져와서
+    //vehicle마다 온체인 정보(owner, taaokenUri) 병렬로 조회
+    const enriched = await Promise.all(vehicles.map(async(vehicle)=>{
+      let ownerOnChain: string | null = null;
+    let tokenUri: string | null = null;
+    try {
+      ownerOnChain = await this.contract.ownerOf(vehicle.tokenId);
+    } catch {
+      ownerOnChain = null;
+    }
+    try {
+      tokenUri = await this.contract.tokenURI(vehicle.tokenId);
+    } catch {
+      tokenUri = null;
+    }
+    return {
+      tokenId: vehicle.tokenId,
+      vin: vehicle.vin,
+      manufacturer: vehicle.manufacturer,
+      ownerDb: vehicle.owner,
+      ownerOnChain,
+      mintedAt: vehicle.mintedAt,
+      tokenUri,
+    };
+    }));
+    return enriched;
+  }
+
   async getVehicle(tokenId: number) {
     const vehicle = await this.vehicleRepository.findOneBy({ tokenId });
     if (!vehicle) {
@@ -107,5 +136,13 @@ export class VehiclesService {
       mintedAt: vehicle.mintedAt,
       tokenUri,
     };
+  }
+
+  async getOwnerOnChain(tokenId:number): Promise<string | null>{
+    try{
+      return await this.contract.ownerOf(tokenId);
+    }catch{
+      return null;
+    }
   }
 }

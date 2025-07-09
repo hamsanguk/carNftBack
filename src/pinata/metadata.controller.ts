@@ -37,7 +37,7 @@ import {
     attributes: AttributeDto[];
   }
   
-  @Controller('nft/metadata')
+  @Controller('vehicle/metadata')
   export class MetadataController {
     constructor(private readonly pinataService: PinataService) {}
   

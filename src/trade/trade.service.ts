@@ -34,6 +34,14 @@ export class TradeService {
     return this.tradeRepo.find({ where: { status: status as TradeStatus} });
   }
 
+  async getRequestByTokenAndRequester(tokenId: string,requester: string){
+    return this.tradeRepo.find({
+      where:{token_id: tokenId, requester},
+      order:{created_at:'DESC'},
+      take:1,
+    })
+  }
+
   async approveRequest(id: string, isApprove: boolean) {
     const request = await this.tradeRepo.findOne({ where: { id } });
     if (!request) throw new NotFoundException('요청을 찾을 수 없습니다.');

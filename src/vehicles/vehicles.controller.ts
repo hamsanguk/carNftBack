@@ -2,7 +2,7 @@ import { Controller, Post, Get, Param, Body, Req, ParseIntPipe } from '@nestjs/c
 import { VehiclesService } from './vehicles.service';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 
-@Controller('nft')
+@Controller('vehicles')
 export class VehiclesController {
   constructor(private readonly vehiclesService: VehiclesService) {}
 
@@ -23,5 +23,18 @@ export class VehiclesController {
   async getVehicle(@Param('tokenId', ParseIntPipe) tokenId: number) {
     return this.vehiclesService.getVehicle(tokenId);
   }
+
+  @Get(':tokenId/owner')
+async getOwner(@Param('tokenId', ParseIntPipe) tokenId: number) {
+  // 온체인에서 ownerOf 조회
+  const owner = await this.vehiclesService.getOwnerOnChain(tokenId);
+  return { owner };
+}
+  @Get()
+  async getAllVehicles() {
+    return this.vehiclesService.getAllVehicles();
+  }
+
+
 }
 //db save fail: db tokenId 3, contract.totaltransfer 4
