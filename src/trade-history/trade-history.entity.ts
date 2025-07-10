@@ -7,7 +7,7 @@ export class TradeHistory {
   id: number;
 
   @Column()
-  tokenId: number;
+  tokenId: number;//string 도 시도하기
 
   @Column()
   from: string;
