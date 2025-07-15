@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Vehicle } from './vehicle.entity';
+import { MintRequestService } from 'src/mint-request/mint-request.service';
 import { ethers, LogDescription } from 'ethers';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import 'dotenv/config';
@@ -16,6 +17,7 @@ export class VehiclesService {
   constructor(
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>,
+    private readonly mintRequestService: MintRequestService,
   ) {
     const rpcUrl = process.env.RPC_URL!;
     const privateKey = process.env.PRIVATE_KEY!;
@@ -27,9 +29,29 @@ export class VehiclesService {
     this.contract = new ethers.Contract(contractAddress, contractAbi, this.wallet);
   }
 
-  async mintVehicle(createVehicleDto: CreateVehicleDto, ownerAddressFromHeader: string): Promise<Vehicle> {
+  async mintVehicle(createVehicleDto: CreateVehicleDto, ownerAddressFromHeader: string, workshopAddress:string): Promise<Vehicle> {
     const to = createVehicleDto.ownerAddress || ownerAddressFromHeader;
     const { vin, manufacturer, metadataUri = '' } = createVehicleDto;
+    // const approvedList = await this.mintRequestService.findApprovedByWorkshop(workshopAddress);
+    // const found = approvedList.find(r => r.vin === createVehicleDto.vin)
+    // if(!found){ throw new BadRequestException('이 차량(vin)은 아직 관리자 승인되지 않았습니다.')} workshop은 동작하지만, admin도 동작하게 하는 코드
+    const normWorkshop = workshopAddress.toLowerCase().trim();
+    const normVin      = createVehicleDto.vin.trim();
+    //온체인 admin여부 확인(컨트랙트상의 admin이라면 db승인 검증 skip)
+    let isAdmin = false;
+        try {
+          isAdmin = await this.contract.admins(normWorkshop);
+       } catch {
+          isAdmin = false;
+        }
+    //관리자가 아니라면 db승인기록을 확인
+    if (!isAdmin) {
+            const approvedList = await this.mintRequestService.findByStatusAndWorkshop('approved', normWorkshop);
+            const found = approvedList.some(r => r.vin.trim() === normVin);
+            if (!found) {
+              throw new BadRequestException('이 차량(VIN)은 아직 관리자 승인되지 않았습니다.');
+            }
+          }
 
     const tx = await this.contract.mintVehicle(to, vin, manufacturer, metadataUri);
     console.log('tx hash', tx.hash);
@@ -45,9 +67,7 @@ export class VehiclesService {
           event = parsed;
           break;
         }
-      } catch {
-        // 무시
-      }
+      } catch {}
     }
     if (!event) {
       throw new Error('VehicleMinted 이벤트를 찾을 수 없습니다.');

@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Param, Body, Req, ParseIntPipe } from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, Req, ParseIntPipe, BadRequestException } from '@nestjs/common';
 import { VehiclesService } from './vehicles.service';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 
@@ -8,10 +8,12 @@ export class VehiclesController {
 
   @Post('mint')
   async mint(@Body() createVehicleDto: CreateVehicleDto, @Req() req: any) {
-    console.log('mint API 호출');
+    console.log('try minting');
     const ownerAddress = req.headers['x-owner-address'] || '0x0000000000000000000000000000000000000000';
+    const workshopAddress = req.headers['x-workshop-address'];
+    if (!workshopAddress) {throw new BadRequestException('workshop address header is missing')}
     try {
-      const vehicle = await this.vehiclesService.mintVehicle(createVehicleDto, ownerAddress);
+      const vehicle = await this.vehiclesService.mintVehicle(createVehicleDto, ownerAddress, workshopAddress);
       return { message: 'Mint success', vehicle };
     } catch (error) {
       console.error('mint 중 에러:', error);
