@@ -7,7 +7,7 @@ export class TradeHistory {
   id: number;
 
   @Column()
-  tokenId: number;//string 도 시도하기
+  tokenId: number;//string 도 시도하기 // backend 진행시 ca + abi 붙여넣기
 
   @Column()
   from: string;
