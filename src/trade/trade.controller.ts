@@ -36,7 +36,7 @@ import {
     async approve(@Param('id') id: string) {
       return this.tradeService.approveRequest(id, true);
     }
-  
+
     @Patch(':id/reject')
     @UseGuards(RolesGuard)
     @Roles('admin')

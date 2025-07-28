@@ -40,7 +40,7 @@ export class TradeService {
       order:{created_at:'DESC'},
       take:1,
     })
-  }ß
+  }
 
   async approveRequest(id: string, approve: boolean) {
     const req = await this.tradeRepo.findOneBy({ id });

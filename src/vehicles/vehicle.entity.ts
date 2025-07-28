@@ -16,4 +16,7 @@ export class Vehicle{
 
     @Column({type:'timestamp', default: ()=> 'CURRENT_TIMESTAMP'})
     mintedAt: Date;
+
+    @Column({default:false})
+    for_sale: boolean;
 }

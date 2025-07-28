@@ -2,54 +2,115 @@ import { Injectable } from '@nestjs/common';
 import { Contract, JsonRpcProvider, EventLog } from 'ethers';
 import { OwnershipHistory } from './ownership-history.entity';
 import vehicleNftAbi from '../../abi/VehicleNFT.json';
+import { createBatchRanges, fetchTransferLogsByRange } from './batch-utils';
 
 @Injectable()
 export class OwnershipIndexerService {
-  async indexTokenOwnership(tokenId: number) {
+  // 단일 토큰 인덱싱
+  async indexTokenOwnership(tokenId: number): Promise<void> {
     const provider = new JsonRpcProvider(process.env.RPC_URL!);
-    const contract = new Contract(process.env.VEHICLE_NFT_ADDRESS!, vehicleNftAbi, provider);
-    const BLOCK_STEP = 5_000;
-    const deploymentBlock = 190902893; // 컨트랙트배포 블록넘버나 세부적으로는 민팅된 블록넘버
+    const contract = new Contract(
+      process.env.VEHICLE_NFT_ADDRESS!,
+      vehicleNftAbi,
+      provider
+    );
+    const filter = contract.filters.Transfer(null, null, tokenId);
+    const BLOCK_STEP = 4500;
+    const deploymentBlock = 190_190_437;
     const latestBlock = await provider.getBlockNumber();
 
-    const filter = contract.filters.Transfer(null, null, tokenId);
-
-    let allLogs: any[] = [];
-    for (let from = deploymentBlock; from <= latestBlock; from += BLOCK_STEP) {
-      const to = Math.min(from + BLOCK_STEP - 1, latestBlock);
-      const logs = await contract.queryFilter(filter, from, to);
-      allLogs = allLogs.concat(logs);
-      console.log(`Fetched logs from block ${from} to ${to}: ${logs.length} logs`);
-    }
-
-    // 2. 블록타임스탬프 함께 배열로 변환
-    const events = await Promise.all(
-      allLogs
-        .filter(log => 'args' in log)
-        .map(async log => {
-          const event = log as EventLog;
-          const block = await provider.getBlock(log.blockNumber);
-          if (!block) throw new Error(`Block not found for log: ${log.transactionHash}`);
-          return {
-            from: event.args.from,
-            to: event.args.to,
-            tokenId: event.args.tokenId,
-            blockNumber: event.blockNumber,
-            timestamp: block.timestamp,
-          };
-        })
+    // 배치 범위 생성 후 로그 수집
+    const batchRanges = createBatchRanges(
+      deploymentBlock,
+      latestBlock,
+      BLOCK_STEP * 100
+    );
+    const logs = await fetchTransferLogsByRange(
+      contract,
+      filter,
+      batchRanges,
+      BLOCK_STEP,
+      1000,
+      `Token ${tokenId}:`
     );
 
-    // 3. 소유주별 기간 계산해서 DB에 반영
-    for (let i = 0; i < events.length; i++) {
-      const curr = events[i];
-      const next = events[i + 1];
-      await OwnershipHistory.create({
-        tokenId: Number(curr.tokenId),
-        ownerAddress: curr.to,
-        startTimestamp: curr.timestamp,
-        endTimestamp: next ? next.timestamp : null,
-      }).save();
+    // 기존 기록 삭제
+    await OwnershipHistory.delete({ tokenId });
+
+    // 로그별 블록 타임스탬프 파싱 및 엔티티 생성
+    for (let i = 0; i < logs.length; i++) {
+      const log = logs[i] as EventLog;
+      const block = await provider.getBlock(log.blockNumber);
+      const startTimestamp = block!.timestamp;
+
+      let endTimestamp: number | null = null;
+      if (i + 1 < logs.length) {
+        const nextLog = logs[i + 1] as EventLog;
+        const nextBlock = await provider.getBlock(nextLog.blockNumber);
+        endTimestamp = nextBlock!.timestamp;
+      }
+
+      const entity = OwnershipHistory.create({
+        tokenId,
+        ownerAddress: log.args.to,
+        startTimestamp,
+        endTimestamp,
+        last_processed_block: log.blockNumber,
+      });
+
+      await entity.save();
+    }
+  }
+
+  // 전체 토큰 인덱싱
+  async indexAllTokensOwnership(): Promise<void> {
+    const provider = new JsonRpcProvider(process.env.RPC_URL!);
+    const contract = new Contract(
+      process.env.VEHICLE_NFT_ADDRESS!,
+      vehicleNftAbi,
+      provider
+    );
+    const BLOCK_STEP = 4500;
+    const deploymentBlock = 191090437;
+    const latestBlock = await provider.getBlockNumber();
+    const filter = contract.filters.Transfer(null, null, null);
+
+    // 전체 이벤트 수집
+    const batchRanges = createBatchRanges(
+      deploymentBlock,
+      latestBlock,
+      BLOCK_STEP * 100
+    );
+    const logs = await fetchTransferLogsByRange(
+      contract,
+      filter,
+      batchRanges,
+      BLOCK_STEP,
+      1000,
+      'Indexer:'
+    );
+
+    // 토큰 ID 추출 및 중복 제거
+    const allTokenIds = Array.from(
+      new Set(
+        logs
+          .filter(log => 'args' in log)
+          .map(log => Number((log as EventLog).args.tokenId))
+      )
+    );
+
+    // 이미 인덱싱된 토큰 ID 조회
+    const existing = await OwnershipHistory.createQueryBuilder('h')
+      .select('DISTINCT h.tokenId', 'tokenId')
+      .getRawMany();
+    const existingIds = new Set(existing.map(e => Number(e.tokenId)));
+
+    // 신규 토큰만 인덱싱
+    const newTokenIds = allTokenIds.filter(id => !existingIds.has(id));
+    console.log(`새로 인덱싱할 토큰 수: ${newTokenIds.length}`);
+
+    for (const id of newTokenIds) {
+      await this.indexTokenOwnership(id);
     }
   }
 }

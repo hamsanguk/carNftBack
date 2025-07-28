@@ -98,6 +98,13 @@ export class VehiclesService {
     return vehicle;
   }
 
+  async updateSaleStatus(tokenId: number, status: boolean) {
+    const vehicle = await this.vehicleRepository.findOneBy({ tokenId });
+    if (!vehicle) throw new NotFoundException('차량이 존재하지 않습니다.');
+    vehicle.for_sale = status;
+    return this.vehicleRepository.save(vehicle);
+  }
+  
   async getAllVehicles(){//리스트용
     const vehicles = await this.vehicleRepository.find();//db에서 vehicle가져와서
     //vehicle마다 온체인 정보(owner, taaokenUri) 병렬로 조회

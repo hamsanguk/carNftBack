@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Param, Body, Req, ParseIntPipe, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Param, Body, Req, ParseIntPipe, BadRequestException } from '@nestjs/common';
 import { VehiclesService } from './vehicles.service';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 
@@ -24,6 +24,15 @@ export class VehiclesController {
   @Get(':tokenId')
   async getVehicle(@Param('tokenId', ParseIntPipe) tokenId: number) {
     return this.vehiclesService.getVehicle(tokenId);
+  }
+
+  @Patch(':tokenId/mark-sale')
+  async markForSale(@Param('tokenId') tokenId:number){
+    return this.vehiclesService.updateSaleStatus(tokenId, true);
+  }                   //매물로 내놓을지 말지 결정하는 로직
+  @Patch(':tokenId/mark-sale')
+  async unlist(@Param('tokenId') tokenId:number){
+    return this.vehiclesService.updateSaleStatus(tokenId, false);
   }
 
   @Get(':tokenId/owner')

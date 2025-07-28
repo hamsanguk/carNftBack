@@ -17,4 +17,7 @@ export class OwnershipHistory extends BaseEntity {
 
   @Column({ type:'bigint', nullable: true })
   endTimestamp: number | null;
+
+  @Column({type:'bigint', nullable:true})
+  last_processed_block:number | null; //마지막으로 처리된 블록
 }

@@ -9,6 +9,6 @@ import { TradeHistoryController } from './trade-history.controller';
   imports: [TypeOrmModule.forFeature([TradeHistory])],
   providers:[TradeService],
   controllers:[TradeHistoryController],
-  exports: [TypeOrmModule],
+  exports: [TypeOrmModule,TradeService],
 })
 export class TradeHistoryModule {}
