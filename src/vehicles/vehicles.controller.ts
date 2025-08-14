@@ -45,7 +45,5 @@ async getOwner(@Param('tokenId', ParseIntPipe) tokenId: number) {
   async getAllVehicles() {
     return this.vehiclesService.getAllVehicles();
   }
-
-
 }
 //db save fail: db tokenId 3, contract.totaltransfer 4

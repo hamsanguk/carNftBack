@@ -6,6 +6,7 @@ import { OwnershipHistoryService } from './ownership-history.service';
 import { OwnershipHistoryController } from './ownership-history.controller';
 import { OwnershipIndexerService } from './ownership-indexer.service';
 import { OwnershipPollingService } from './ownership-poller.service';
+import {OwnershipSchedulerService} from './ownership-scheduler.service'
 
 @Module({
   imports: [TypeOrmModule.forFeature([OwnershipHistory])],
@@ -13,6 +14,7 @@ import { OwnershipPollingService } from './ownership-poller.service';
     OwnershipHistoryService,
     OwnershipIndexerService,
     OwnershipPollingService,
+    OwnershipSchedulerService
   ],
   controllers: [OwnershipHistoryController],
   exports: [OwnershipHistoryService, OwnershipIndexerService],

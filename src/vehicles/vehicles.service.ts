@@ -38,6 +38,8 @@ export class VehiclesService {
     const normWorkshop = workshopAddress.toLowerCase().trim();
     const normVin      = createVehicleDto.vin.trim();
     //온체인 admin여부 확인(컨트랙트상의 admin이라면 db승인 검증 skip)
+    if(!metadataUri || !metadataUri.startsWith('ipfs://'))throw new BadRequestException('metadataUri가 올바르지 않습니다.');{};
+    
     let isAdmin = false;
         try {
           isAdmin = await this.contract.admins(normWorkshop);

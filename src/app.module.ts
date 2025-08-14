@@ -12,7 +12,11 @@ import { PinataModule } from './pinata/pinata.module';
 import { ConfigModule } from '@nestjs/config';
 import { MintRequestModule } from './mint-request/mint-request.module';
 import { OwnershipHistoryModule } from './ownership-history/ownership-history.module'; 
+import { MetadataModule } from './metadata/metadata.module';
+import { TokenMetadata } from './metadata/token-metadata.entity';
 import { OwnershipPollerStatus} from './ownership-history/ownership-poller-status.entity';
+import { ScheduleModule} from '@nestjs/schedule';
+
 
 @Module({
   imports: [
@@ -23,15 +27,23 @@ import { OwnershipPollerStatus} from './ownership-history/ownership-poller-statu
       username: 'hamsang-ug',
       password: '1q2w3e4r',
       database: 'vehicle_db',
-      entities: [Vehicle, TradeHistory, TradeRequest, MintRequest, OwnershipHistory, OwnershipPollerStatus], 
-      synchronize: true,  // 개발 단계에서만 true, 운영 시 false로 변경
+      entities: [
+        Vehicle, TradeHistory, TradeRequest, MintRequest,
+        OwnershipHistory, OwnershipPollerStatus,TokenMetadata // ⬅ 추가
+      ],
+      synchronize: true,
     }),
-    TypeOrmModule.forFeature([Vehicle, TradeHistory, TradeRequest, OwnershipHistory, OwnershipPollerStatus]), 
+    ScheduleModule.forRoot(),
+    TypeOrmModule.forFeature([
+      Vehicle, TradeHistory, TradeRequest, OwnershipHistory, OwnershipPollerStatus
+    ]),
+
+    MetadataModule,
     TradeModule,
     VehiclesModule,
     MintRequestModule,
     PinataModule,
-    OwnershipHistoryModule,   // ← 모듈
+    OwnershipHistoryModule,
     ConfigModule.forRoot({ isGlobal: true }),
   ],
   controllers: [],
@@ -42,4 +54,3 @@ export class AppModule implements NestModule {
     consumer.apply(FakeAdminMiddleware).forRoutes('*');
   }
 }
-// export class AppModule  {} //fakeadmin부여전 원래

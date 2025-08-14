@@ -6,7 +6,6 @@ import { Readable } from 'stream';
 @Injectable()
 export class PinataService {
   private readonly pinata;
-
   constructor(private readonly config: ConfigService) {
     const key = this.config.get<string>('PINATA_API_KEY');
     const secret = this.config.get<string>('PINATA_API_SECRET');
@@ -29,19 +28,30 @@ export class PinataService {
     }
   }
 
- 
-async uploadMetadata(metadata: Record<string, any>): Promise<string> {
-    console.log('▶︎ Pinata uploadMetadata 호출, metadata=', metadata);
-    try {
-      const result = await this.pinata.pinJSONToIPFS(metadata, {
-        pinataMetadata: { name: metadata.name || 'metadata' },
-      });
-      console.log('▶︎ Pinata 응답:', result);
-      return `ipfs://${result.IpfsHash}`;
-    } catch (error) {
-      console.error('▶︎ Pinata 업로드 오류 상세:', error);
-      throw new InternalServerErrorException('메타데이터 업로드 실패');
+// PinataService.ts
+async uploadMetadata(metadata: any): Promise<string> {
+  // DTO 인스턴스 방지: Plain Object로 강제
+  const json = JSON.parse(JSON.stringify(metadata)); 
+
+  if(typeof json.image === 'string'){
+    const v = json.image.trim();
+    const isHttp = v.startsWith('http://') || v.startsWith('https://');
+    const isIpfs = v.startsWith('ipfs://');
+    const looksLikeCid = /^((Qm)[1-9A-Za-z]{44}|(bafy)[1-9A-Za-z]+)$/i.test(v);
+
+    if (isHttp || isIpfs){
+      json.image = v;
+    }else if (looksLikeCid){
+      json.image = `ipfs://${v}`;
     }
+    // 그 외의 경우(상대경로 등)는 보장하지 않는다, 클라이언트에서 올바르게 보낸다는 가정으로
   }
+
+  const result = await this.pinata.pinJSONToIPFS(json, {
+    pinataMetadata: { name: json?.name || 'vehicle-metadata'},
+  });
+  return `ipfs://${result.IpfsHash}`;
+}
+
   
 }
