@@ -13,5 +13,5 @@ export class CreateVehicleDto {
 
   @IsString()
   @IsOptional()
-  ownerAddress?: string; // 테스트용, 실제는 헤더 등에서 받거나 서버 내 별도 관리
+  ownerAddress?: string; 
 }

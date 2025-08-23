@@ -98,8 +98,7 @@ export class OwnershipPollingService {
       console.log(`No new Transfer logs from ${fromBlock} to ${currentBlock}`);
       return;
     }
-
-    // tokenId별 그룹화
+    // tokenId별 그룹화 로직상의 상충관계
     const tokenLogsMap = new Map<number, EventLog[]>();
     for (const log of logs) {
       const tokenId = Number(log.args.tokenId);
@@ -118,7 +117,7 @@ export class OwnershipPollingService {
       await this.indexer.indexTokenOwnership(tokenId, tokenLogs);
     }
 
-    // 루프가 끝난 시점에서 최종 블록 한 번 더 저장(보수적)
+    // 루프가 끝난 시점에서 최종 블록 한 번 더 저장(보수적) 
     await this.saveLatestBlockToDb(currentBlock);
 
     console.log(

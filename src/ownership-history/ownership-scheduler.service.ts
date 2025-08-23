@@ -13,8 +13,7 @@ export class OwnershipSchedulerService {
     name: 'ownership-indexing',
     timeZone: 'Asia/Seoul', 
   })
-
-
+//수동인덱싱
   async runIndexingJob() {
     if (process.env.OWNERSHIP_INDEX_CRON_ENABLED === 'false') {//.env에서
       return;
