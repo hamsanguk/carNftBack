@@ -20,4 +20,7 @@ export class OwnershipHistory extends BaseEntity {
 
   @Column({type:'bigint', nullable:true})
   last_processed_block:number | null; //마지막으로 처리된 블록
+
+  @Column({ type:'int', nullable:true})
+  last_log_index: number | null; //마지막 처리 로그 인덱스
 }

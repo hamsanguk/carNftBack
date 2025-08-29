@@ -20,4 +20,3 @@ export const ipfsToHttp = (uri: string, gateway?: string) => {
     if (typeof meta.name === 'string' && meta.name.trim()) return meta.name.trim();
     return null;
   };
-  

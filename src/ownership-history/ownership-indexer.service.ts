@@ -1,14 +1,10 @@
+// back/src/modules/ownership-history/ownership-indexer.service.ts
 import { Injectable } from '@nestjs/common';
 import { Contract, EventLog, JsonRpcProvider, Log } from 'ethers';
 import { OwnershipHistory } from './ownership-history.entity';
 import vehicleNftAbi from '../../abi/VehicleNFT.json';
 import { createBatchRanges, fetchTransferLogsByRange } from './batch-utils';
 
-/**
- * 인덱서:
- * - logsFromPoller가 있으면 재조회 없이 해당 로그로 바로 OwnershipHistory 갱신
- * - 없으면(수동/재빌드 시) 배치 조회로 인덱싱
- */
 @Injectable()
 export class OwnershipIndexerService {
   private provider = new JsonRpcProvider(process.env.RPC_URL!);
@@ -18,38 +14,40 @@ export class OwnershipIndexerService {
     this.provider
   );
 
-  // 환경변수 기반 파라미터 (없으면 기본값)
   private DEPLOY_BLOCK = Number(process.env.VEHICLE_NFT_DEPLOY_BLOCK ?? 191090437);
   private BLOCK_STEP = Number(process.env.INDEX_BLOCK_STEP ?? 4500);
-  private BATCH_MULTIPLIER = Number(process.env.INDEX_BATCH_MULTIPLIER ?? 100); // createBatchRanges size
+  private BATCH_MULTIPLIER = Number(process.env.INDEX_BATCH_MULTIPLIER ?? 100);
   private PAGE_SIZE = Number(process.env.INDEX_PAGE_SIZE ?? 1000);
 
-  /**
-   * tokenId 단위 인덱싱
-   * @param tokenId
-   * @param logsFromPoller poller에서 이미 수집한 Transfer 로그(중복 조회 방지)
-   */
+  private async buildTsCache(blockNumbers: number[]): Promise<Map<number, number>> {
+    const uniq = Array.from(new Set(blockNumbers));
+    const cache = new Map<number, number>();
+    for (const bn of uniq) {
+      const blk = await this.provider.getBlock(bn);
+      cache.set(bn, blk!.timestamp);
+    }
+    return cache;
+  }
+
+  private getLogIdx(ev: any): number {
+    return Number(ev.index ?? ev.logIndex ?? 0);
+  }
+
   async indexTokenOwnership(tokenId: number, logsFromPoller?: (EventLog | Log)[]): Promise<void> {
     // 1) 로그 확보
-    let logs: (EventLog | Log)[];
-
+    let logs: EventLog[];
     if (logsFromPoller && logsFromPoller.length > 0) {
-      // poller로부터 받은 로그만 사용(재조회 없음)
-      logs = logsFromPoller
-        .filter(l => 'args' in l) // EventLog만 남김
-        .filter(l => Number((l as EventLog).args.tokenId) === Number(tokenId));
+      logs = (logsFromPoller.filter(l => 'args' in l) as EventLog[])
+        .filter(l => Number(l.args.tokenId) === Number(tokenId));
     } else {
-      // 직접 조회(재빌드 등에서 사용)
       const latestBlock = await this.provider.getBlockNumber();
       const filter = this.contract.filters.Transfer(null, null, tokenId);
-
       const batchRanges = createBatchRanges(
         this.DEPLOY_BLOCK,
         latestBlock,
         this.BLOCK_STEP * this.BATCH_MULTIPLIER
       );
-
-      logs = await fetchTransferLogsByRange(
+      const fetched = await fetchTransferLogsByRange(
         this.contract,
         filter,
         batchRanges,
@@ -57,71 +55,104 @@ export class OwnershipIndexerService {
         this.PAGE_SIZE,
         `Token ${tokenId}:`
       );
+      logs = fetched as EventLog[];
     }
 
-    // 정렬(블록번호, logIndex 순) — 순서 보장
+    // 정렬(블록 → logIndex)
     logs.sort((a, b) => {
-      const ab = Number(a.blockNumber) - Number(b.blockNumber);
-      return ab !== 0 ? ab : Number((a as any).index ?? (a as any).logIndex ?? 0) - Number((b as any).index ?? (b as any).logIndex ?? 0);
+      const byBlock = Number(a.blockNumber) - Number(b.blockNumber);
+      if (byBlock !== 0) return byBlock;
+      return this.getLogIdx(a) - this.getLogIdx(b);
     });
 
-    // 2) 해당 tokenId 기존 기록 제거
-    await OwnershipHistory.delete({ tokenId });
+    // 2) 분기
+    const isIncremental = !!logsFromPoller && logs.length > 0;
 
-    if (logs.length === 0) {
-      // 기록이 없으면 끝
+    if (!isIncremental) {
+      // ===== 전체 재색인: 기존 기록 삭제 후 전체 재구축 =====
+      await OwnershipHistory.delete({ tokenId });
+      if (logs.length === 0) return;
+
+      const tsCache = await this.buildTsCache(logs.map(l => Number(l.blockNumber)));
+      for (let i = 0; i < logs.length; i++) {
+        const cur = logs[i];
+        const curBn = Number(cur.blockNumber);
+        const startTs = tsCache.get(curBn)!;
+        let endTs: number | null = null;
+        if (i + 1 < logs.length) {
+          const next = logs[i + 1];
+          endTs = tsCache.get(Number(next.blockNumber))!;
+        }
+        await OwnershipHistory.create({
+          tokenId,
+          ownerAddress: String(cur.args.to),
+          startTimestamp: startTs,
+          endTimestamp: endTs,
+          last_processed_block: curBn,
+          last_log_index: this.getLogIdx(cur),
+        }).save();
+      }
       return;
     }
 
-    // 3) 블록 타임스탬프 캐시 (해당 tokenId 처리 범위 내)
-    const uniqueBlocks = Array.from(new Set(logs.map(l => Number(l.blockNumber))));
-    const tsCache = new Map<number, number>();
-    // 병렬 과도 방지: 간단히 순차 fetch (필요시 p-limit로 동시성 제한 가능)
-    for (const bn of uniqueBlocks) {
-      const blk = await this.provider.getBlock(bn);
-      tsCache.set(bn, blk!.timestamp);
+    // ===== 증분 모드: 기존 이력 유지 + 신규 로그만 추가 =====
+    const existing = await OwnershipHistory.find({
+      where: { tokenId },
+      order: { startTimestamp: 'ASC' },
+    });
+    const lastRec   = existing[existing.length - 1];
+    const lastBlock = lastRec ? Number(lastRec.last_processed_block ?? 0) : 0;
+    const lastIndex = lastRec ? Number((lastRec as any).last_log_index ?? -1) : -1;
+
+    const newLogs = logs.filter(l => {
+      const bn  = Number(l.blockNumber);
+      const idx = this.getLogIdx(l);
+      return (bn > lastBlock) || (bn === lastBlock && idx > lastIndex);
+    });
+    if (newLogs.length === 0) return;
+
+    // 타임스탬프 캐시(증분용) — ★ 여기서 tsCache 생성
+    const tsCache = await this.buildTsCache(newLogs.map(l => Number(l.blockNumber)));
+
+    // 열린 구간 닫기: endTimestamp만 갱신
+    if (lastRec && lastRec.endTimestamp == null) {
+      const firstNew = newLogs[0];
+      const firstNewTs = tsCache.get(Number(firstNew.blockNumber))!;
+      if (firstNewTs >= Number(lastRec.startTimestamp)) {
+        lastRec.endTimestamp = firstNewTs;
+        await lastRec.save();
+      }
     }
 
-    // 4) 로그를 OwnershipHistory로 저장
-    for (let i = 0; i < logs.length; i++) {
-      const cur = logs[i] as EventLog;
-      const curBn = Number(cur.blockNumber);
-      const startTimestamp = tsCache.get(curBn)!;
-
-      let endTimestamp: number | null = null;
-      if (i + 1 < logs.length) {
-        const next = logs[i + 1] as EventLog;
-        const nextBn = Number(next.blockNumber);
-        endTimestamp = tsCache.get(nextBn)!;
+    // 신규 구간 추가
+    for (let i = 0; i < newLogs.length; i++) {
+      const cur   = newLogs[i];
+      const bn    = Number(cur.blockNumber);
+      const idx   = this.getLogIdx(cur);
+      const start = tsCache.get(bn)!;
+      let end: number | null = null;
+      if (i + 1 < newLogs.length) {
+        end = tsCache.get(Number(newLogs[i + 1].blockNumber))!;
       }
-
-      const entity = OwnershipHistory.create({
+      await OwnershipHistory.create({
         tokenId,
-        ownerAddress: (cur.args.to as string),
-        startTimestamp,
-        endTimestamp,
-        last_processed_block: curBn,
-      });
-
-      await entity.save();
+        ownerAddress: String(cur.args.to),
+        startTimestamp: start,
+        endTimestamp: end,
+        last_processed_block: bn,
+        last_log_index: idx,
+      }).save();
     }
   }
 
-  /**
-   * 전체 토큰 인덱싱(재빌드)
-   * - 전체 Transfer를 긁어서 tokenId만 추출 → tokenId별로 indexTokenOwnership 호출(이 경우 재조회)
-   * - 대량 재빌드 시 오래 걸릴 수 있음
-   */
   async indexAllTokensOwnership(): Promise<void> {
     const latestBlock = await this.provider.getBlockNumber();
     const filter = this.contract.filters.Transfer(null, null, null);
-
     const batchRanges = createBatchRanges(
       this.DEPLOY_BLOCK,
       latestBlock,
       this.BLOCK_STEP * this.BATCH_MULTIPLIER
     );
-
     const logs = await fetchTransferLogsByRange(
       this.contract,
       filter,
@@ -130,7 +161,6 @@ export class OwnershipIndexerService {
       this.PAGE_SIZE,
       'Indexer:'
     );
-
     const tokenIds = Array.from(
       new Set(
         logs
@@ -138,7 +168,6 @@ export class OwnershipIndexerService {
           .map(l => Number((l as EventLog).args.tokenId))
       )
     );
-
     for (const id of tokenIds) {
       await this.indexTokenOwnership(id);
     }
