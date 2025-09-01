@@ -1,12 +1,20 @@
-// back/src/modules/ownership-history/ownership-indexer.service.ts
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { TradeRequest, TradeStatus } from '../trade/trade.entity';
 import { Contract, EventLog, JsonRpcProvider, Log } from 'ethers';
 import { OwnershipHistory } from './ownership-history.entity';
 import vehicleNftAbi from '../../abi/VehicleNFT.json';
+// 경로 보정: utils 아래 파일을 사용합니다.
 import { createBatchRanges, fetchTransferLogsByRange } from './batch-utils';
 
 @Injectable()
 export class OwnershipIndexerService {
+  constructor(
+    @InjectRepository(TradeRequest)
+    private readonly tradeRepo: Repository<TradeRequest>,
+  ) {}
+
   private provider = new JsonRpcProvider(process.env.RPC_URL!);
   private contract = new Contract(
     process.env.VEHICLE_NFT_ADDRESS!,
@@ -83,6 +91,7 @@ export class OwnershipIndexerService {
           const next = logs[i + 1];
           endTs = tsCache.get(Number(next.blockNumber))!;
         }
+
         await OwnershipHistory.create({
           tokenId,
           ownerAddress: String(cur.args.to),
@@ -90,6 +99,7 @@ export class OwnershipIndexerService {
           endTimestamp: endTs,
           last_processed_block: curBn,
           last_log_index: this.getLogIdx(cur),
+          tx_hash: (cur as any).transactionHash ?? null,
         }).save();
       }
       return;
@@ -111,7 +121,7 @@ export class OwnershipIndexerService {
     });
     if (newLogs.length === 0) return;
 
-    // 타임스탬프 캐시(증분용) — ★ 여기서 tsCache 생성
+    // 타임스탬프 캐시(증분용)
     const tsCache = await this.buildTsCache(newLogs.map(l => Number(l.blockNumber)));
 
     // 열린 구간 닫기: endTimestamp만 갱신
@@ -124,7 +134,7 @@ export class OwnershipIndexerService {
       }
     }
 
-    // 신규 구간 추가
+    // 신규 구간 추가 + TradeRequest 상태 갱신(리스너 역할 이관)
     for (let i = 0; i < newLogs.length; i++) {
       const cur   = newLogs[i];
       const bn    = Number(cur.blockNumber);
@@ -134,6 +144,7 @@ export class OwnershipIndexerService {
       if (i + 1 < newLogs.length) {
         end = tsCache.get(Number(newLogs[i + 1].blockNumber))!;
       }
+
       await OwnershipHistory.create({
         tokenId,
         ownerAddress: String(cur.args.to),
@@ -141,7 +152,19 @@ export class OwnershipIndexerService {
         endTimestamp: end,
         last_processed_block: bn,
         last_log_index: idx,
+        tx_hash: (cur as any).transactionHash ?? null,
       }).save();
+
+      // 최신 APPROVED → COMPLETED 전환
+      const approved = await this.tradeRepo.findOne({
+        where: { token_id: String(tokenId), status: TradeStatus.APPROVED },
+        order: { created_at: 'DESC' },
+      });
+      if (approved) {
+        approved.status = TradeStatus.COMPLETED;
+        (approved as any).tx_hash = (cur as any).transactionHash ?? null;
+        await this.tradeRepo.save(approved);
+      }
     }
   }
 

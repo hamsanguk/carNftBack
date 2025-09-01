@@ -1,5 +1,4 @@
-// back/src/modules/ownership-history/ownership-history.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column, BaseEntity } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, BaseEntity, Index } from 'typeorm';
 
 @Entity('ownership_history')
 export class OwnershipHistory extends BaseEntity {
@@ -12,15 +11,22 @@ export class OwnershipHistory extends BaseEntity {
   @Column()
   ownerAddress: string;
 
-  @Column({type:'bigint'})//unix timestamp(초 단위, 혹은 ms 단위라면 string 고려)
+  // unix timestamp (초 단위 권장). ms를 저장한다면 string 고려.
+  @Column({ type: 'bigint' })
   startTimestamp: number;
 
-  @Column({ type:'bigint', nullable: true })
+  @Column({ type: 'bigint', nullable: true })
   endTimestamp: number | null;
 
-  @Column({type:'bigint', nullable:true})
-  last_processed_block:number | null; //마지막으로 처리된 블록
+  // 인덱싱 체크포인트용
+  @Index()
+  @Column({ type: 'bigint', nullable: true })
+  last_processed_block: number | null;
 
-  @Column({ type:'int', nullable:true})
-  last_log_index: number | null; //마지막 처리 로그 인덱스
+  @Column({ type: 'int', nullable: true })
+  last_log_index: number | null;
+
+  // 거래 해시(선택) — 파생 거래내역 응답 품질 개선
+  @Column({ type: 'varchar', length: 66, nullable: true })
+  tx_hash: string | null;
 }

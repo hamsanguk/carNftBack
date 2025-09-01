@@ -9,7 +9,7 @@ async function bootstrap() {
 
   app.enableCors({
     origin:[
-      'http://localhost:3008'//front 실제 포트 
+      'http://localhost:52250'//front 실제 포트 
     ],
     methods: ['GET','POST','PATCH','PUT','DELETE','OPTIONS'],
     allowedHeaders: ['Content-Type','Authorization',

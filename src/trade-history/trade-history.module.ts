@@ -1,14 +1,13 @@
-// src/trade-history/trade-history.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { TradeHistory } from './trade-history.entity';
 import { TradeService } from './trade-history.service';
 import { TradeHistoryController } from './trade-history.controller';
+import { OwnershipHistory } from 'src/ownership-history/ownership-history.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([TradeHistory])],
-  providers:[TradeService],
-  controllers:[TradeHistoryController],
-  exports: [TypeOrmModule,TradeService],
+  imports: [TypeOrmModule.forFeature([OwnershipHistory])],
+  providers: [TradeService],
+  controllers: [TradeHistoryController],
+  exports: [TypeOrmModule, TradeService],
 })
 export class TradeHistoryModule {}

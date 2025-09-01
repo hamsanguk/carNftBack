@@ -3,7 +3,7 @@ import { FakeAdminMiddleware } from './common/middleware/fake-admin.middleware';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Vehicle } from './vehicles/vehicle.entity';
 import { MintRequest } from './mint-request/mint-request.entity';
-import { TradeHistory } from './trade-history/trade-history.entity';
+
 import { TradeRequest } from './trade/trade.entity';
 import { OwnershipHistory } from './ownership-history/ownership-history.entity'; 
 import { TradeModule } from './trade/trade.module';
@@ -14,9 +14,7 @@ import { MintRequestModule } from './mint-request/mint-request.module';
 import { OwnershipHistoryModule } from './ownership-history/ownership-history.module'; 
 import { MetadataModule } from './metadata/metadata.module';
 import { TokenMetadata } from './metadata/token-metadata.entity';
-import { OwnershipPollerStatus} from './ownership-history/ownership-poller-status.entity';
 import { ScheduleModule} from '@nestjs/schedule';
-
 
 @Module({
   imports: [
@@ -28,14 +26,14 @@ import { ScheduleModule} from '@nestjs/schedule';
       password: '1q2w3e4r',
       database: 'vehicle_db',
       entities: [
-        Vehicle, TradeHistory, TradeRequest, MintRequest,
-        OwnershipHistory, OwnershipPollerStatus,TokenMetadata // ⬅ 추가
+        Vehicle,  TradeRequest, MintRequest,
+        OwnershipHistory,TokenMetadata 
       ],
       synchronize: true,
     }),
     ScheduleModule.forRoot(),
     TypeOrmModule.forFeature([
-      Vehicle, TradeHistory, TradeRequest, OwnershipHistory, OwnershipPollerStatus
+      Vehicle, TradeRequest, OwnershipHistory, 
     ]),
 
     MetadataModule,
