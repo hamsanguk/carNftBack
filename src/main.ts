@@ -1,34 +1,41 @@
-//main.ts
+// main.ts
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import {ValidationPipe} from '@nestjs/common'
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  const port  = process.env.PORT ? Number(process.env.PORT) : 3000; //render에서 주는 환경변수port
+  const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 
-  //아직 프론트 배포 않한상테의 allow
-  const allowList = [/^https?:\/\/localhost:(300.)$/,]
+  // 허용할 출처들: 로컬(3000~3009), Vercel 프론트 도메인(정확히 하나)
+  const FRONT_URL = 'https://car-nft-front-6y2966hrj-hamsanguks-projects.vercel.app';
+  const localRegex = /^https?:\/\/localhost:300[0-9]$/;
+
   app.enableCors({
-    origin: (origin:string, cb) => {
-      if (!origin) return cb(null, true); // 서버-서버, curl 등
-      if (allowList.some(r => r.test(origin))) return cb(null, true);
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true); // curl/서버-서버 호출 허용
+      if (typeof origin === 'string' && (origin === FRONT_URL || localRegex.test(origin))) {
+        return cb(null, true);
+      }
       return cb(new Error('CORS blocked'), false);
     },
+    credentials: true,
     methods: ['GET','POST','PATCH','PUT','DELETE','OPTIONS'],
-    allowedHeaders: ['Content-Type','Authorization',
-    'x-owner','x-workshop','x-owner-address','x-workshop-address'],
-    credentials: true,        
-    maxAge: 86400,              
+    allowedHeaders: [
+      'Content-Type','Authorization',
+      'x-owner','x-workshop','x-owner-address','x-workshop-address'
+    ],
+    maxAge: 86400,
   });
+
   app.useGlobalPipes(new ValidationPipe({
-    whitelist: true, // DTO에 없는 필드는 제거 true권장 metaUri 응답X + 권한 프론트 진입x
-    forbidNonWhitelisted:false,//제거만, 에러는 않던짐
-    transform:true,//자동으로 primitive 에서 class 인스턴스로 변환
+    whitelist: true,
+    forbidNonWhitelisted: false,
+    transform: true,
     errorHttpStatusCode: 400
   }));
 
-  await app.listen(port, '0.0.0.0');//원래 3000
-  console.log(`Server running on http://localhost:${port}`)
+  await app.listen(port, '0.0.0.0');
+  console.log(`Server running on http://localhost:${port}`);
 }
 bootstrap();
