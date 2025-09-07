@@ -5,16 +5,20 @@ import {ValidationPipe} from '@nestjs/common'
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  const port  = Number(process.env.PORT) || 3000;
+  const port  = process.env.PORT ? Number(process.env.PORT) : 3000; //render에서 주는 환경변수port
 
+  //아직 프론트 배포 않한상테의 allow
+  const allowList = [/^https?:\/\/localhost:(300.)$/,]
   app.enableCors({
-    origin:[
-      'http://localhost:52250'//front 실제 포트 
-    ],
+    origin: (origin:string, cb) => {
+      if (!origin) return cb(null, true); // 서버-서버, curl 등
+      if (allowList.some(r => r.test(origin))) return cb(null, true);
+      return cb(new Error('CORS blocked'), false);
+    },
     methods: ['GET','POST','PATCH','PUT','DELETE','OPTIONS'],
     allowedHeaders: ['Content-Type','Authorization',
     'x-owner','x-workshop','x-owner-address','x-workshop-address'],
-    credentials: false,        
+    credentials: true,        
     maxAge: 86400,              
   });
   app.useGlobalPipes(new ValidationPipe({
@@ -24,7 +28,7 @@ async function bootstrap() {
     errorHttpStatusCode: 400
   }));
 
-  await app.listen(port ?? 3000);
+  await app.listen(port, '0.0.0.0');//원래 3000
   console.log(`Server running on http://localhost:${port}`)
 }
 bootstrap();
