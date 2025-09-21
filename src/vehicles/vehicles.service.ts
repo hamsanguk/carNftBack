@@ -14,6 +14,7 @@ export class VehiclesService {
   private wallet: ethers.Wallet;
   private contract: ethers.Contract;
 
+  
   constructor(
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>,
@@ -35,6 +36,7 @@ export class VehiclesService {
     // const approvedList = await this.mintRequestService.findApprovedByWorkshop(workshopAddress);
     // const found = approvedList.find(r => r.vin === createVehicleDto.vin)
     // if(!found){ throw new BadRequestException('이 차량(vin)은 아직 관리자 승인되지 않았습니다.')} workshop은 동작하지만, admin도 동작하게 하는 코드
+  
     const normWorkshop = workshopAddress.toLowerCase().trim();
     const normVin      = createVehicleDto.vin.trim();
     //온체인 admin여부 확인(컨트랙트상의 admin이라면 db승인 검증 skip)

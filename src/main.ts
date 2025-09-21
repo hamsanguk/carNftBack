@@ -13,7 +13,6 @@ async function bootstrap() {
   // Vercel 프리뷰/브랜치 도메인들:
   //   예) car-nft-front-git-main-hamsanguks-projects.vercel.app
   //       car-nft-front-6y2966hrj-hamsanguks-projects.vercel.app
-  //   위처럼 중간에 해시/브랜치 세그먼트가 달라지는 경우를 모두 허용하기 위한 정규식
   const vercelPreviewRegex = /^https?:\/\/car-nft-front(?:-[a-z0-9-]+)?-hamsanguks-projects\.vercel\.app$/i;
 
   // 로컬 개발용: localhost:3000 ~ 3009

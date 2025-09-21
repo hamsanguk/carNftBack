@@ -12,7 +12,7 @@ import { MintRequest } from 'src/mint-request/mint-request.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Vehicle,TradeRequest]),//원래 tradehistory,traderequest 없었음
+    TypeOrmModule.forFeature([Vehicle,TradeRequest]),
     TypeOrmModule.forFeature([MintRequest]),
     MintRequestModule,
 ],

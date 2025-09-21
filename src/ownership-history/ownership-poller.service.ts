@@ -100,7 +100,6 @@ export class OwnershipPollingService {
         // 현재 구현은 MAX(last_processed_block) 기반이므로, 다음 실행에서 이 구간을 다시 스캔할 수 있습니다.
         // 확실한 워터마크가 필요하면 별도의 status 테이블을 사용하세요.
       }
-
       if (end < currentBlock) await this.sleep(this.SLEEP_MS);
     }
 

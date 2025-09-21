@@ -11,7 +11,6 @@ export class PinataService {
     const secret = this.config.get<string>('PINATA_API_SECRET');
     this.pinata = new PinataSDK(key, secret);
   }
-
   /**
    * 이미지 파일을 IPFS에 업로드하고 CID URL을 반환
    */
